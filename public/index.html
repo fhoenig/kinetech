@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+	<script>window.two_bots = false;</script>
+
+	<title>Kinetech Sandbox</title>
+	<link rel="stylesheet" href="/styles/master.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<link rel="stylesheet" href="/styles/icons.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<link rel="stylesheet" href="/styles/editor.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<link rel="stylesheet" href="/scripts/lib/codemirror.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<script src="/scripts/lib/zig.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/jquery.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/codemirror.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/javascript.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/javascript-hint.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/continuecomment.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/matchbrackets.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/vector_matrix.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/class.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/color.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/box2d.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/seedrandom.js" type="text/javascript" charset="utf-8"></script>	
+	<script src="/scripts/lib/noise.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/xmath.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/common.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/simplexnoise.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/NN.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/RL.js" type="text/javascript" charset="utf-8"></script>	
+	<script src="/scripts/app/bone.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/actor.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/bot-singlearm.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-swimmer.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-simplerandom.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-noise.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-stand.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-noise2.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-track1.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-learner2.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-poser.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-noiseposer.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-up.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-scripts.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/viech-controller-choreographer.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/scene.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/UI.js" type="text/javascript" charset="utf-8"></script>
+	
+	<script type="text/javascript" charset="utf-8">
+		
+		var renderer = null;
+		$(function() {
+			
+			// init joysticks
+			if (plugin.joysticksJSON)
+				window.joysticks = JSON.parse(plugin.joysticksJSON());
+			
+			// init the scene (debug canvas)
+			var scene = new Scene('#canvas', true);
+			
+			// add a viech
+			window.bot1 = new Viech(scene, 0.36, 0.60, {
+				seed: "FloViech1",	// random seed
+				spineLength: 0.70,	// length of the spine
+			});
+
+			// add a bot-singlearm
+			// var newbot = new BotSinglearm(scene, 3.50, 3.5);
+			
+			var toolbar = new UI.Toolbar("#toolbar", "#propertybox", scene);
+			var scripts = new ActorControllers.Viech.Scripts();
+			bot1.setController(scripts);
+			toolbar.addInspector(new UI.ViechPropertyInspector(bot1));
+			toolbar.addInspector(new UI.ViechScriptsControllerInspector(scripts));
+			toolbar.attachTimeline(bot1);
+
+			$.get("controller-template.txt", function(resp) {
+				ControllerScriptTemplate = resp;
+				UI.Code.init($("#view-editor"), ControllerScriptTemplate);
+			});
+			
+			scene.run();
+		});
+	</script>
+	
+</head>
+
+<body>
+	<object id="plugin" type="application/x-boomstickjavascriptjoysticksupport" width="0" height="0"></object>
+	<div class="mainviews">
+		<div id="view-world" class="canvas-container box">
+			<canvas id="canvas" width="898" height="580"></canvas>
+		</div>
+		<div id="view-editor" class="editor-container box">
+		</div>
+	</div>
+	<div class="box" id="propertybox">
+		
+	</div>
+	
+	<div class="toolbar" id="toolbar">
+		<ul id="basicsGroup" class="toolgroup left switchgroup">
+			<li id="selectBody" class="button"><div class="icon cursor_arrow" title="Select Body"></div></li>
+			<li id="dragBody" class="button"><div class="icon cursor_drag_hand" title="Drag Body"></div></li>
+			<li id="moveBody" class="button"><div class="icon cursor_drag_arrow" title="Move Body"></div></li>
+			<li id="poser" class="button"><div class="icon game_pad" title="Pose Controller"></div></li>
+			<li id="createCircle" class="button"><div class="icon round" title="Create Circle"></div></li>
+			<li id="createBox" class="button"><div class="icon abox" title="Create Rectangle"></div></li>
+		</ul>
+
+		<ul id="worldGroup" class="toolgroup right">
+			<li id="detachWorld" class="button"><a href="#" alt="" rel="">Detach</a></li>
+			<li id="pauseWorld" class="button"><a href="#" alt="" rel="">Pause</a></li>
+		</ul>
+		
+		<ul id="viewGroup" class="toolgroup right switchgroup">
+			<li id="viewWorld" class="button selected"><a href="#" alt="" rel="">View World</a></li>
+			<li id="viewCode" class="button"><a href="#" alt="" rel="">View Code</a></li>
+		</ul>
+
+	</div>
+	<div class="box" id="timeline">
+		<ul class="labels"></ul>
+		<div class="container"></div>
+	</div>
+	<footer>
+        <span>
+        Kinetech Sandbox v0.1<br>
+        </span>
+		Copyright &copy; 2014 - <a href="http://twitter.com/rianflo">Florian Hoenig</a> - <a href="http://github.com/kinetech">Fork me on Github</a>
+	</footer>
+</body>
+
+
+</html>

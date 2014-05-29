@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+	<link rel="stylesheet" href="/styles/master.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<link rel="stylesheet" href="/styles/icons.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<script src="/scripts/lib/jquery-1.7.1.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/class.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/vector_matrix.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/seedrandom.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/noise.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/xmath.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/tree-common.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/NN.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/RL.js" type="text/javascript" charset="utf-8"></script>
+	
+	<script type="text/javascript" charset="utf-8">
+
+		function color (color, alpha) {
+			return "rgba(" + ((color & 0xFF0000) >> 16) + "," + ((color & 0xFF00) >> 8) + "," + (color & 0xFF) + "," + alpha + ")";
+		};
+		
+		function drawActor(ctx, state) {
+			var xpos = state[0];
+			var ypos = state[1];
+			var velx = state[2];
+			var vely = state[3];
+			
+			ctx.beginPath();
+			ctx.arc(xpos, ypos, 10, 0, 2*Math.PI, false);
+			ctx.lineWidth = 1;
+			ctx.strokeStyle = "white";
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.moveTo(xpos, ypos);
+			ctx.lineTo((xpos+velx), (ypos+vely));
+			ctx.lineWidth = 1;
+			ctx.strokeStyle = "#ff00ff";
+			ctx.stroke();
+		};
+		
+		function drawV(ctx, algo) {
+			for (var x=10; x<ctx.canvas.width; x+=20)
+				for (var y=10; y<ctx.canvas.height; y+=20)
+				{
+					var V = algo.VNN.evaluate($V([(x-250)/250, (y-250)/250]));
+					if (V < 0) {
+						var VV = Math.abs(V);
+						ctx.fillStyle = color("0xFF0000", VV);
+					} else {
+						ctx.fillStyle = color("0x00FF00", V);
+					}
+					// console.log(V);
+					ctx.beginPath();
+					ctx.arc(x, y, 2, 0, 2*Math.PI, false);
+					ctx.lineWidth = 1;
+					ctx.fill();
+					
+					// ctx.fillStyle = "white";
+					// ctx.font         = 'italic 8px sans-serif';
+					// ctx.fillText(XMath.round(V, 1), x, y);
+					
+					var A = algo.ANN.forwardPropagate([(x-250)/250, (y-250)/250]);
+					ctx.beginPath();
+					ctx.moveTo(x, y);
+					ctx.lineTo((x+30*A[0]), (y+30*A[1]));
+					ctx.lineWidth = 0.5;
+					ctx.strokeStyle = "#ffffff";
+					ctx.stroke();					
+				}
+
+			// center vectors
+
+			for (var i in algo.VNN.centerVector) {
+				var xc = algo.VNN.centerVector[i].elements[0];
+				var yc = algo.VNN.centerVector[i].elements[1];
+				ctx.beginPath();
+				ctx.arc(250+xc*250, 250+yc*250, 3, 0, 2*Math.PI, false);
+				ctx.lineWidth = 1;
+				ctx.stroke();
+			}
+			
+		};
+		
+		function drawGoal(ctx, goals) {
+			for (var i in goals) {
+				state = goals[i];
+				var xpos = state[0];
+				var ypos = state[1];
+				var r = state[2];
+
+				ctx.beginPath();
+				ctx.arc(xpos, ypos, r, 0, 2*Math.PI, false);
+				ctx.lineWidth = 1;
+				ctx.strokeStyle = "#00ff00";
+				ctx.stroke();
+			}
+		}
+		
+		function run(ctx) {
+			this._running = true;
+			this._lastTime = 0;
+			this._actor = [Math.random()*480+10, Math.random()*480+10, 0, 0];
+			this._goal = [];
+			for (var i=0; i<5; i++) this._goal.push([Math.random()*480+10, Math.random()*480+10, 30]);
+			
+			this._getState = function(s) {
+				s.continuousState[0] = (this._actor[0]-250)/250;
+				s.continuousState[1] = (this._actor[1]-250)/250;
+				// s.continuousState[2] = this._actor[2];
+				// s.continuousState[3] = this._actor[3];
+			};
+			
+			this._applyAction = function(a) {
+				this._actor[2] = a[0]*10;
+				this._actor[3] = a[1]*10;
+			};
+			
+			this._updateActor = function(dt) {
+				this._actor[0] += this._actor[2];
+				this._actor[1] += this._actor[3];
+			};
+			
+			this._inGoal = function() {
+				for (var i in this._goal) {
+					var g = this._goal[i];
+					if (XMath.euclidDist([this._actor[0], this._actor[1]], [g[0], g[1]]) < g[2])
+						return true;
+				}
+				return false;
+			};
+			
+			this._getReward = function() {
+				if (this._actor[0] > 490 || this._actor[0] < 10 || this._actor[1] > 490 || this._actor[1] < 10){
+					this._endOfEpisode = true;
+					return 0;
+				}
+				else if (this._inGoal()) {
+					this._endOfEpisode = false;
+					return 1;
+				} 
+				else {
+					this._endOfEpisode = false;
+					return 0;
+				} 
+			};
+			
+			// basic RL setup
+			this._algorithm = new RL.Cacla({nHiddenQ: 64, nHiddenV: 10}, {
+				getDiscreteStates: function() {
+					// interface method for RL.Algorithm
+					return false;
+				},
+
+				getActionDimension: function() {
+					// interface method for RL.Algorithm
+					return 2;
+				},
+
+				getStateDimension: function() {
+					// interface method for RL.Algorithm
+					return 2;
+				}
+			});
+			this._state = new RL.State(true, 2);
+			this._nextState = new RL.State(true, 2);
+			this._action = new RL.Action(true, 2);
+			this._nextAction = new RL.Action(true, 2);
+			this._epsilon = 0.3;
+			this._episode = 0;
+			this._explorationType = "noise";
+			
+			// init first RL timestep
+			this._nextEpisode = function() {
+				// this._algorithm.resetMemory();
+				this._actor = [Math.random()*480+10, Math.random()*480+10, 0, 0];
+				this._episode++;
+			    this._rewardSum = 0.0;
+				this._iteration = 0;
+			    this._getState(this._state);
+			    this._algorithm.explore(this._state, this._action, this._epsilon, this._explorationType);
+				this._applyAction(this._action.continuousAction);
+				this._updateActor();
+			    this._endOfEpisode = false;
+			};
+			
+			this._nextEpisode();
+			
+
+			var updateDraw = function(timestamp) {
+
+				// update delta time
+				if (this._lastTime == 0) {
+					this._lastTime = timestamp;
+				}
+				var deltaTime = (timestamp - this._lastTime) / 1000;
+				this._lastTime = timestamp;
+
+				// alias this for callback
+				var self = this;
+				
+				// immediate reward from last action
+				this._reward = this._getReward();
+				
+				// new state
+				this._getState(this._nextState);
+				
+				// exploration / next decision
+		        this._algorithm.explore(this._nextState, this._nextAction, this._epsilon, this._explorationType);
+		
+				// learner algorithm update
+				this._algorithm.update(this._state, this._action, this._reward, this._nextState, this._endOfEpisode, [0.01, 0.001] /*rate*/, 0.9 /*gamma*/);
+				
+				// copy current to state/action
+				this._state.continuousState = this._nextState.continuousState.slice(0);
+				this._action.continuousAction = this._nextAction.continuousAction.slice(0);
+
+				this._applyAction(this._action.continuousAction);
+								
+				// update and draw		
+				ctx.clearRect(0, 0, 500, 500);
+				this._updateActor(deltaTime);
+				drawV(ctx, this._algorithm);
+				drawActor(ctx, this._actor);
+				drawGoal(ctx, this._goal);
+
+				if (this._endOfEpisode) {
+					// this._algorithm.resetMemory();
+					this._nextEpisode();
+				}
+								
+				// repeat loop
+				if (self._running) {
+					requestAnimFrame(function(ts) {
+						updateDraw.call(self, ts);
+					});				
+				}
+			};
+			
+			
+			updateDraw.call(this, 0);
+			
+	    };
+
+	
+		$(function() {
+			var ctx = $('#graph').get(0).getContext("2d");
+			run(ctx);
+		});
+	</script>
+	
+</head>
+
+<body>
+	<header><h1>Project TREE - RL Test</h1></header>
+	<div class="box" style="width:500px; float:left">
+		<canvas id="graph" style="background-color: #555"width="500" height="500">
+	</div>
+	<div class="box" id="reward" style="width:500px; float:left; padding: 10px"></div>
+	<footer>
+		Copyright &copy; 2012 - Florian Hoenig - All rights reserved.
+	</footer>
+</body>
+
+
+</html>

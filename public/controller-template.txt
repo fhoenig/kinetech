@@ -1,0 +1,23 @@
+//
+// Controller Script
+//
+//
+{
+    title   : "[add title]",
+    
+    //
+    // Initialization
+    //
+    init: function() 
+    {
+        
+    },
+    
+    //
+    // Update 
+    //
+    update: function(timeStamp, deltaTime, v) 
+    {
+
+    }
+}

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+	<link rel="stylesheet" href="/styles/master.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<link rel="stylesheet" href="/styles/icons.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<script src="/scripts/lib/jquery-1.7.1.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/class.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/seedrandom.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/xmath.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/tree-common.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/NN.js" type="text/javascript" charset="utf-8"></script>
+	
+	<script type="text/javascript" charset="utf-8">
+	
+		var targetF = function(x) {
+			return XMath.gaussian(x, 1, 0);
+		};
+	
+		function drawGraph(f, color, range) {
+			var ctx = $('#graph').get(0).getContext("2d");
+			var tx = function(x) { return x/ctx.canvas.width * (range[1]-range[0]) + range[0]; };
+			var ty = function(y) { return (y+range[1])/(range[1]-range[0]) * ctx.canvas.height; };
+			var last = 0;
+			for (var i=0; i<ctx.canvas.width; i++) {
+				var current = f(tx(i));
+				ctx.beginPath();
+				ctx.strokeStyle = color;
+				ctx.lineWidth = 1.0;
+				ctx.moveTo(i-1, ctx.canvas.height - ty(last));
+				ctx.lineTo(i, ctx.canvas.height - ty(current));
+				ctx.stroke();
+				last = current;
+			}
+		}
+		
+		function drawAxis() {
+			var ctx = $('#graph').get(0).getContext("2d");
+			ctx.beginPath();
+			ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+			ctx.lineWidth = 1;
+			ctx.moveTo(ctx.canvas.width/2.0+0.5, 0);
+			ctx.lineTo(ctx.canvas.width/2.0+0.5, ctx.canvas.height);
+			ctx.moveTo(0, ctx.canvas.height/2.0+0.5);
+			ctx.lineTo(ctx.canvas.width, ctx.canvas.height/2.0+0.5);
+			ctx.stroke();
+		}
+
+		$(function() {
+			drawAxis();
+			drawGraph(targetF, "rgba(255, 255, 255, 0.5)", [-5, 5]);
+			drawGraph(NN.Func.TanH.output, "rgba(255, 0, 64, 0.5)", [-5, 5]);
+			var nn = new NN.NeuralNetwork(1, [1, 10, 1], [0,1,0]);
+			var nnf = function(x) {
+				var out = nn.forwardPropagate([x]);
+				return out[0];
+			};
+			
+			drawGraph(targetF, "rgba(255, 255, 255, 0.5)", [-5, 5]);
+			drawGraph(nnf, "rgba(255, 0, 0, 1)", [-5, 5]);
+			
+			// learn 10 iterations
+			for (var n=0; n<100000; n+=1) {
+				// sample one result of target and net
+				var s = Math.random()*8-4;
+				// var err = targetF(s) - nn.forwardPropagate([s]);
+				nn.backPropagate([s], [targetF(s)], 0.001);
+			}
+			drawGraph(nnf, "rgba(255, 255, 0, 1)", [-5, 5]);
+			
+			
+		});
+	</script>
+	
+</head>
+
+<body>
+	<header><h1>Project TREE - Test Suite</h1></header>
+	<div class="box">
+		
+	</div>
+	<div class="box">
+		<canvas id="graph" style="background-color: #555"width="400" height="300">
+	</div>
+	
+	<footer>
+		Copyright &copy; 2012 - Florian Hoenig - All rights reserved.
+	</footer>
+</body>
+
+
+</html>

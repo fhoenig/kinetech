@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+	<link rel="stylesheet" href="/styles/master.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<link rel="stylesheet" href="/styles/icons.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<script src="/scripts/lib/jquery-1.7.1.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/class.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/color.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/seedrandom.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/simplexnoise.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/xmath.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/tree-common.js" type="text/javascript" charset="utf-8"></script>
+	
+	<script type="text/javascript" charset="utf-8">
+
+		$(function() {
+			
+			var context = $('#canvas').get(0).getContext("2d");
+
+			// Create an ImageData object.
+			var imgd = context.createImageData(500,500);
+			var pix = imgd.data;
+			var noiseGenA = new SimplexNoise(1111, 2);
+			var noiseGenR = new SimplexNoise(2222, 2);
+			var noiseGenG = new SimplexNoise(3333, 2);
+			var noiseGenB = new SimplexNoise(4444, 2);
+
+			// Loop over each pixel and set a transparent red.
+			var l = pix.length;
+			for (var i = 0; i < l; i += 4) {
+				var x = i%(500*4);
+				var y = i/(500);
+				var n = noiseGenA.simplexNoise([x/100, y/100]) * noiseGenA.simplexNoise([x/50, y/50])/2;
+				pix[i] = 255*noiseGenR.simplexNoise([x/100, y/100]) * noiseGenR.simplexNoise([x/250, y/250])/2;
+				pix[i+1] = 255*noiseGenG.simplexNoise([x/100, y/100]) * noiseGenG.simplexNoise([x/250, y/250])/2;
+				pix[i+2] =255*noiseGenB.simplexNoise([x/100, y/100]) * noiseGenB.simplexNoise([x/250, y/250])/2;
+				pix[i+3] = 255*(n+1)/2; // alpha channel
+			}
+
+			// Draw the ImageData object at the given (x,y) coordinates.
+			context.putImageData(imgd, 0,0);
+			
+		});
+	</script>
+	
+</head>
+
+<body>
+	<header><h1>Noise Test</h1></header>
+	<div class="canvas-container box">
+		<canvas style="background-color:white" id="canvas" width="500" height="500"></canvas>
+	</div>
+	<footer>
+		Copyright &copy; 2012 - Florian Hoenig - All rights reserved.
+	</footer>
+</body>
+
+
+</html>

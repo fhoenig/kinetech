@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+	<link rel="stylesheet" href="/styles/master.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<link rel="stylesheet" href="/styles/icons.css" type="text/css" media="screen" title="master style" charset="utf-8">
+	<script src="/scripts/lib/jquery-1.7.1.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/class.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/seedrandom.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/lib/vector_matrix.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/xmath.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/tree-common.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/scripts/app/NN.js" type="text/javascript" charset="utf-8"></script>
+	
+	<script type="text/javascript" charset="utf-8">
+	
+		var targetF = function(x) {
+			return XMath.gaussian(x, 1, 0);
+		};
+	
+		function drawGraph(f, rangeX, rangeY) {
+			var ctx = $('#graph').get(0).getContext("2d");
+			// var tx = function(x) { return x/ctx.canvas.width * (range[1]-range[0]) + range[0]; };
+			// var ty = function(y) { return (y+range[1])/(range[1]-range[0]) * ctx.canvas.height; };
+			// var last = 0;
+			var imageData = ctx.createImageData(ctx.canvas.width, ctx.canvas.height);
+			
+			for (var x=rangeX[0]; x<rangeX[1]; x++) {
+				for (var y=rangeY[0]; y<rangeY[1]; y++) {
+					var index = 4 * (y * imageData.width + x);
+					imageData.data[index] = 255;
+					imageData.data[index + 1] = 255;
+					imageData.data[index + 2] = 255;
+					imageData.data[index + 3] = f(x, y) * 255;
+				}
+			}
+
+			ctx.putImageData(imageData, 0, 0);
+		}
+		
+		function drawAxis() {
+			var ctx = $('#graph').get(0).getContext("2d");
+			ctx.beginPath();
+			ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+			ctx.lineWidth = 1;
+			ctx.moveTo(ctx.canvas.width/2.0+0.5, 0);
+			ctx.lineTo(ctx.canvas.width/2.0+0.5, ctx.canvas.height);
+			ctx.moveTo(0, ctx.canvas.height/2.0+0.5);
+			ctx.lineTo(ctx.canvas.width, ctx.canvas.height/2.0+0.5);
+			ctx.stroke();
+		}
+		
+		function loadPattern(url, ready) {
+			var img = new Image();
+			$(img).load(function(){
+				var ctx = $('#target').get(0).getContext("2d");
+				ctx.drawImage(img, 0, 0);
+				var imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+				ready(imageData);
+			}).attr("src", url);
+		}
+
+		$(function() {
+			Math.seedrandom("11");
+			loadPattern("/images/inputpattern2.png", function(pattern){
+				var nn = new NN.GSBFNet(2, 10, [0, 500]);
+				var nnf = function(x, y) {
+					var out = nn.evaluate($V([x, y]));
+					return out;
+				};
+			
+				// drawGraph(nnf, [0, pattern.width], [0, pattern.height]);				
+				console.log(pattern.data[((250 + 250 * pattern.width) * 4 + 3)] / 255);
+				console.log(nnf(250, 250));
+				var target = null;
+				for (var n=0; n<25000; n+=1) {
+					// sample one result of target and net
+					var sx = Math.random() * (pattern.width-1);
+					var sy = Math.random() * (pattern.height-1);
+					target = pattern.data[((Math.round(sx) + Math.round(sy) * pattern.width) * 4 + 3)] / 255;
+					// console.log(target);
+					nn.train($V([sx, sy]), target);
+				}
+				
+				console.log(nnf(250, 250));
+				drawGraph(nnf, [0, pattern.width], [0, pattern.height]);
+			});
+			
+			
+		});
+	</script>
+	
+</head>
+
+<body>
+	<header><h1>Project TREE - Test Suite</h1></header>
+	<div class="box" style="background-color: #555">
+		<canvas id="target" style="border:1px solid white;" width="500" height="500"></canvas>
+		<canvas id="graph"  style="border:1px solid red;" width="500" height="500"></canvas>
+	</div>
+	<div id="dbg"></div>
+	
+	<footer>
+		Copyright &copy; 2012 - Florian Hoenig - All rights reserved.
+	</footer>
+</body>
+
+
+</html>
